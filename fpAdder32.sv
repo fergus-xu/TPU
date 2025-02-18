@@ -154,9 +154,35 @@ module fpAdder32(
             );
         end
     endgenerate
+    logic is_sum_zero;
+    assign is_sum_zero = (mant_rounded == 24'h0);
 
-    assign out[31]    = sign_out;
-    assign out[30:23] = exp_final;
-    assign out[22:0]  = mant_rounded[22:0];
+    logic [31:0] normal_result;
+    assign normal_result[31]    = sign_out;
+    assign normal_result[30:23] = exp_final;
+    assign normal_result[22:0]  = mant_rounded[22:0];
+
+    logic [31:0] exception_result;
+    logic use_normal_path;
+    fp_exception_handler exception_inst(
+        .A(A),
+        .B(B),
+        .op_sub(op_sub),
+        .normal_result(normal_result),
+        .is_sum_zero(is_sum_zero),
+        .sign_out(sign_out),
+        .final_result(exception_result),
+        .use_normal_path(use_normal_path)
+    );
+
+    generate
+        for(i = 0; i < 32; i = i + 1) begin : gen_final_result
+            mux21 u_mux(
+                .x({exception_result[i], normal_result[i]}),
+                .s(use_normal_path),
+                .out(out[i])
+            );
+        end
+    endgenerate
 
 endmodule
